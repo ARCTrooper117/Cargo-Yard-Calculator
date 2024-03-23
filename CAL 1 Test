@@ -1,0 +1,63 @@
+def calculate_pallets_with_full_row_column_placement(length_ft, width_ft, obstructions, side1_orientation, side2_orientation):
+    pallet_dimensions = {'length': 132, 'width': 148}  # Including required spacing
+    forklift_space_inch = 35 * 12  # For forklift maneuverability
+
+    # Convert yard dimensions to inches
+    yard_dimensions = {'length': length_ft * 12, 'width': width_ft * 12}
+
+    # Adjust yard dimensions if there are no obstructions for the first row or column
+    if not obstructions[side1_orientation]:
+        if side1_orientation in ['left', 'right']:
+            yard_dimensions['width'] = yard_dimensions['width']  # No adjustment needed for the width for the first column
+        else:
+            yard_dimensions['length'] = yard_dimensions['length']  # No adjustment needed for the length for the first row
+    
+    if not obstructions[side2_orientation]:
+        if side2_orientation in ['left', 'right']:
+            yard_dimensions['width'] = yard_dimensions['width']  # No adjustment needed for the width for the first column
+        else:
+            yard_dimensions['length'] = yard_dimensions['length']  # No adjustment needed for the length for the first row
+
+    # Determine the pallet orientation based on side1 and side2 inputs
+    pallet_orientation_length, pallet_orientation_width = (pallet_dimensions['length'], pallet_dimensions['width']) if 'top' in [side1_orientation, side2_orientation] or 'bottom' in [side1_orientation, side2_orientation] else (pallet_dimensions['width'], pallet_dimensions['length'])
+
+    # Calculate how many pallets can fit
+    pallets_length = yard_dimensions['length'] // pallet_orientation_length
+    pallets_width = yard_dimensions['width'] // pallet_orientation_width
+
+    # Adjust for forklift maneuverability space
+    extra_length_space = ((pallets_length - 1) // 2) * forklift_space_inch if pallets_length > 2 else 0
+    extra_width_space = ((pallets_width - 1) // 2) * forklift_space_inch if pallets_width > 2 else 0
+
+    adjusted_length = yard_dimensions['length'] - extra_length_space
+    adjusted_width = yard_dimensions['width'] - extra_width_space
+
+    # Final pallet count
+    final_pallets_length = adjusted_length // pallet_orientation_length
+    final_pallets_width = adjusted_width // pallet_orientation_width
+
+    total_pallets = final_pallets_length * final_pallets_width
+
+    return max(0, total_pallets), side1_orientation, side2_orientation
+
+# Example usage
+if __name__ == "__main__":
+    length_ft = float(input("Enter cargo yard length (ft): "))
+    width_ft = float(input("Enter cargo yard width (ft): "))
+
+    obstructions = {
+        'top': input("Is there an obstruction at the top perimeter? (yes/no): ").lower().startswith('y'),
+        'left': input("Is there an obstruction at the left perimeter? (yes/no): ").lower().startswith('y'),
+        'right': input("Is there an obstruction at the right perimeter? (yes/no): ").lower().startswith('y'),
+        'bottom': input("Is there an obstruction at the bottom perimeter? (yes/no): ").lower().startswith('y'),
+    }
+
+    side1_orientation = input("Which side will the short side of the first pallet be at? (top/left/right/bottom): ").lower().strip()
+    side2_orientation = input("And the wide side? (top/left/right/bottom): ").lower().strip()
+
+    total_pallets, s1_orientation, s2_orientation = calculate_pallets_with_full_row_column_placement(
+        length_ft, width_ft, obstructions, side1_orientation, side2_orientation
+    )
+    
+    print(f"\nFirst pallet's short side will be at the {s1_orientation} and the wide side will be at the {s2_orientation}.")
+    print(f"Total pallets that can fit: {total_pallets}")
