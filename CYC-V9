@@ -1,0 +1,173 @@
+import tkinter as tk
+from tkinter import messagebox, Canvas, Scrollbar, StringVar, BooleanVar, Radiobutton
+
+def calculate_pallets_with_full_row_column_placement(length_ft, width_ft, obstructions, side1_orientation, side2_orientation):
+    pallet_dimensions = {'length': 132, 'width': 148}  # Including required spacing in inches
+    forklift_space_inch = 35 * 12  # For forklift maneuverability in inches
+
+    # Convert yard dimensions to inches
+    yard_dimensions = {'length': length_ft * 12, 'width': width_ft * 12}
+
+    # Determine the pallet orientation
+    pallet_orientation_length, pallet_orientation_width = (
+        pallet_dimensions['length'], pallet_dimensions['width']) if side1_orientation == 'bottom' or side2_orientation == 'left' else (
+        pallet_dimensions['width'], pallet_dimensions['length'])
+
+    # Calculate how many pallets can fit
+    pallets_length = yard_dimensions['length'] // pallet_orientation_length
+    pallets_width = yard_dimensions['width'] // pallet_orientation_width
+
+    # Adjust for forklift maneuverability space
+    extra_length_space = ((pallets_length - 1) // 2) * forklift_space_inch if pallets_length > 2 else 0
+    extra_width_space = ((pallets_width - 1) // 2) * forklift_space_inch if pallets_width > 2 else 0
+
+    adjusted_length = yard_dimensions['length'] - extra_length_space
+    adjusted_width = yard_dimensions['width'] - extra_width_space
+
+    # Final pallet count
+    final_pallets_length = adjusted_length // pallet_orientation_length
+    final_pallets_width = adjusted_width // pallet_orientation_width
+
+    total_pallets = final_pallets_length * final_pallets_width
+
+    return max(0, total_pallets), side1_orientation, side2_orientation, final_pallets_length, final_pallets_width
+
+def draw_yard_and_pallets(canvas, length_ft, width_ft, total_pallets, side1_orientation, side2_orientation, pallets_length, pallets_width):
+    canvas.delete("all")  # Clear existing drawings
+    
+    scale_factor = 20  # Adjust the scale factor as needed for visual representation
+    yard_length_px = length_ft * scale_factor
+    yard_width_px = width_ft * scale_factor
+
+    # Setting the canvas scroll region to accommodate the yard and pallets
+    canvas.config(scrollregion=(0, 0, yard_length_px + 20, yard_width_px + 20))
+
+    # Draw the yard perimeter in red
+    canvas.create_rectangle(10, 10, 10 + yard_length_px, 10 + yard_width_px, outline="red")
+
+    # Assuming a fixed pallet size for visualization, scaled down
+    pallet_length_px = 132 / 12 * scale_factor  # Convert inches to feet before scaling
+    pallet_width_px = 148 / 12 * scale_factor  # Convert inches to feet before scaling
+
+    # Depending on the orientation, swap the length and width for drawing
+    if side2_orientation == 'left' or side1_orientation == 'bottom':
+        pallet_length_px, pallet_width_px = pallet_width_px, pallet_length_px
+
+    # Calculate and draw each pallet as a blue rectangle within the yard
+    for row in range(int(pallets_length)):
+        for col in range(int(pallets_width)):
+            # Top-left corner of each pallet
+            x0 = 10 + col * pallet_width_px
+            y0 = 10 + row * pallet_length_px
+            # Bottom-right corner of each pallet
+            x1 = x0 + pallet_width_px
+            y1 = y0 + pallet_length_px
+            canvas.create_rectangle(x0, y0, x1, y1, outline="blue")
+
+def trigger_calculation():
+    length_ft = float(length_entry.get())
+    width_ft = float(width_entry.get())
+    obstructions = {
+        'top': top_var.get(),
+        'left': left_var.get(),
+        'right': right_var.get(),
+        'bottom': bottom_var.get(),
+    }
+    side1_orientation = side1_orientation_var.get()
+    side2_orientation = side2_orientation_var.get()
+
+    total_pallets, s1_orientation, s2_orientation, pallets_length, pallets_width = calculate_pallets_with_full_row_column_placement(
+        length_ft, width_ft, obstructions, side1_orientation, side2_orientation)
+
+    result_text = f"Total pallets that can fit: {total_pallets}"
+    messagebox.showinfo("Calculation Result", result_text)
+    
+    draw_yard_and_pallets(canvas, length_ft, width_ft, total_pallets, s1_orientation, s2_orientation, pallets_length, pallets_width)
+
+def reset_application():
+    # Clear the entry fields
+    length_entry.delete(0, tk.END)
+    width_entry.delete(0, tk.END)
+
+    # Reset the checkbuttons to False
+    top_var.set(False)
+    left_var.set(False)
+    right_var.set(False)
+    bottom_var.set(False)
+
+    # Reset the radiobuttons to their default values
+    side1_orientation_var.set("top")
+    side2_orientation_var.set("left")
+
+    # Clear the canvas
+    canvas.delete("all")
+    canvas.config(scrollregion=(0, 0, 0, 0))
+
+# Set up the main application window
+root = tk.Tk()
+root.title("Pallet Calculator")
+root.geometry("1200x600")
+
+# Frame for input controls
+input_frame = tk.Frame(root)
+input_frame.pack(side="right", fill="y", padx=20)
+
+# Yard dimensions entry
+tk.Label(input_frame, text="Yard Length (ft):").pack(pady=(10, 0))
+length_entry = tk.Entry(input_frame)
+length_entry.pack()
+
+tk.Label(input_frame, text="Yard Width (ft):").pack(pady=(10, 0))
+width_entry = tk.Entry(input_frame)
+width_entry.pack()
+
+# Obstructions checkboxes
+tk.Label(input_frame, text="Obstructions:").pack(pady=(10, 0))
+top_var = BooleanVar()
+tk.Checkbutton(input_frame, text="Top", variable=top_var).pack(anchor="w")
+left_var = BooleanVar()
+tk.Checkbutton(input_frame, text="Left", variable=left_var).pack(anchor="w")
+right_var = BooleanVar()
+tk.Checkbutton(input_frame, text="Right", variable=right_var).pack(anchor="w")
+bottom_var = BooleanVar()
+tk.Checkbutton(input_frame, text="Bottom", variable=bottom_var).pack(anchor="w")
+
+# Orientation selection
+tk.Label(input_frame, text="Pallet Orientation:").pack(pady=(10, 0))
+side1_orientation_var = StringVar(value="top")
+side2_orientation_var = StringVar(value="left")
+tk.Radiobutton(input_frame, text="Short Side Top", variable=side1_orientation_var, value="top").pack(anchor="w")
+tk.Radiobutton(input_frame, text="Short Side Left", variable=side1_orientation_var, value="left").pack(anchor="w")
+tk.Radiobutton(input_frame, text="Short Side Right", variable=side1_orientation_var, value="right").pack(anchor="w")
+tk.Radiobutton(input_frame, text="Short Side Bottom", variable=side1_orientation_var, value="bottom").pack(anchor="w")
+tk.Radiobutton(input_frame, text="Wide Side Top", variable=side2_orientation_var, value="top").pack(anchor="w")
+tk.Radiobutton(input_frame, text="Wide Side Left", variable=side2_orientation_var, value="left").pack(anchor="w")
+tk.Radiobutton(input_frame, text="Wide Side Right", variable=side2_orientation_var, value="right").pack(anchor="w")
+tk.Radiobutton(input_frame, text="Wide Side Bottom", variable=side2_orientation_var, value="bottom").pack(anchor="w")
+
+# Calculate button
+calculate_button = tk.Button(input_frame, text="Calculate", command=trigger_calculation)
+calculate_button.pack(pady=20)
+
+# Reset button
+reset_button = tk.Button(input_frame, text="Reset", command=reset_application)
+reset_button.pack(pady=10)
+
+# Canvas and Scrollbar setup for scrollable canvas
+canvas_frame = tk.Frame(root)
+canvas_frame.pack(side="left", fill="both", expand=True)
+
+canvas = Canvas(canvas_frame, background="black")
+canvas.pack(side="left", fill="both", expand=True)
+
+# Scrollbars
+v_scroll = Scrollbar(canvas_frame, orient="vertical", command=canvas.yview)
+v_scroll.pack(side="right", fill="y")
+canvas.configure(yscrollcommand=v_scroll.set)
+
+h_scroll = Scrollbar(canvas_frame, orient="horizontal", command=canvas.xview)
+h_scroll.pack(side="bottom", fill="x")
+canvas.configure(xscrollcommand=h_scroll.set)
+
+# Start the GUI event loop
+root.mainloop()
